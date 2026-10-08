@@ -1,0 +1,33 @@
+.env
+.env.*
+!.env.example
+!.env.prompts.example
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.venv/
+venv/
+
+# Runtime state
+users.db
+data/
+logs/
+proxyapi_errors.log
+*.sqlite
+*.sqlite3
+
+# Local editor/agent state
+.vscode/
+.idea/
+.continue/
+.agents/
+desktop.ini
+.DS_Store
+
+# Build/deploy artifacts
+*.tar
+*.tar.gz
+*.zip

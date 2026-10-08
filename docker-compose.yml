@@ -1,0 +1,61 @@
+services:
+  postgres:
+    image: public.ecr.aws/docker/library/postgres:16-alpine
+    container_name: proxyapi-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-proxyapi}
+      POSTGRES_USER: ${POSTGRES_USER:-proxyapi}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-proxyapi}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-proxyapi} -d ${POSTGRES_DB:-proxyapi}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  proxyapi-bots:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: proxyapi-bots
+    restart: unless-stopped
+    extra_hosts:
+      - "api.telegram.org:149.154.167.220"
+    env_file:
+      - .env
+      - .env.prompts
+    environment:
+      DB_BACKEND: ${DB_BACKEND:-postgres}
+      DATABASE_URL: ${DATABASE_URL:-postgresql://proxyapi:proxyapi@postgres:5432/proxyapi}
+      SQLITE_DB_PATH: /app/data/users.db
+      ERROR_LOG_PATH: /app/data/proxyapi_errors.log
+      APP_BASE_URL: ${APP_BASE_URL:-http://localhost:8000}
+      PUBLIC_WEBHOOK_BASE_URL: ${PUBLIC_WEBHOOK_BASE_URL:-}
+      AUTO_SET_WEBHOOKS: ${AUTO_SET_WEBHOOKS:-true}
+      TELEGRAM_DELIVERY_MODE: ${TELEGRAM_DELIVERY_MODE:-webhook}
+      START_CLOUDFLARED: ${START_CLOUDFLARED:-true}
+      CLOUDFLARED_METRICS_URL: ${CLOUDFLARED_METRICS_URL:-http://127.0.0.1:4040/metrics}
+      TUNNEL_WAIT_SECONDS: ${TUNNEL_WAIT_SECONDS:-120}
+      VK_AUTO_SET_CALLBACK: ${VK_AUTO_SET_CALLBACK:-true}
+      VK_GROUP_ID: ${VK_GROUP_ID:-}
+      VK_CALLBACK_SECRET: ${VK_CALLBACK_SECRET:-}
+      VK_CALLBACK_SERVER_TITLE: ${VK_CALLBACK_SERVER_TITLE:-ProxyApiBots}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/ready').read()"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+volumes:
+  postgres_data:
